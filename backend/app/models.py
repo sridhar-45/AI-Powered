@@ -77,3 +77,43 @@ class ExamSession(Base):
     question_data = Column(Text, nullable=False)  # JSON: locked questions + shuffled options
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String, default="in_progress")  # in_progress / submitted / terminated
+
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+    id = Column(Integer, primary_key=True)
+    full_name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    subject = Column(String, nullable=False)
+
+
+class SchoolClass(Base):
+    __tablename__ = "school_classes"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    section = Column(String, nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
+    teacher = relationship("Teacher")
+
+
+class Enrollment(Base):
+    __tablename__ = "enrollments"
+    id = Column(Integer, primary_key=True)
+    class_id = Column(Integer, ForeignKey("school_classes.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+
+class Attendance(Base):
+    __tablename__ = "attendance"
+    id = Column(Integer, primary_key=True)
+    class_id = Column(Integer, ForeignKey("school_classes.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    school_date = Column(String(10), nullable=False)
+    status = Column(String(10), nullable=False)
+
+
+class SchoolAssessment(Base):
+    __tablename__ = "school_assessments"
+    id = Column(Integer, primary_key=True)
+    class_id = Column(Integer, ForeignKey("school_classes.id"), nullable=False)
+    exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False, unique=True)

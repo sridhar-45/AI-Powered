@@ -34,3 +34,6 @@ questions.csv
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Separate upstream Laravel checkout; keep its own Git history and AGPL license.
+school-management-system/

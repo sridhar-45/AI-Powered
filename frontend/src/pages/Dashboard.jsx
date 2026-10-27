@@ -92,6 +92,7 @@ function Dashboard() {
             <div style={styles.adminActions}>
               <Link to="/admin/create-exam" style={styles.createExamBtn}>+ Create Exam</Link>
               <Link to="/admin/students" style={styles.manageBtn}>Manage Students</Link>
+              <Link to="/school" style={styles.manageBtn}>School Management</Link>
             </div>
           )}
         </div>

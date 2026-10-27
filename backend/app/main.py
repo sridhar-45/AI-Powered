@@ -13,6 +13,7 @@ from fastapi import Request
 
 from app.database import engine, Base, get_db
 from app import models, schemas, auth
+from app.school import router as school_router, require_exam_enrollment
 
 # Create all tables on startup (safe to run even if they already exist)
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ app = FastAPI(
     description="Backend API for the AI Proctoring System",
     version="1.0.0",
 )
+app.include_router(school_router)
 
 # Rate limiter — keyed by client IP
 limiter = Limiter(key_func=get_remote_address)
@@ -36,7 +38,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -179,6 +181,12 @@ def list_available_exams(
 
     result = []
     for exam in exams:
+        if current_user.role != "admin":
+            assignment = db.query(models.SchoolAssessment).filter_by(exam_id=exam.id).first()
+            if assignment and not db.query(models.Enrollment).filter_by(
+                class_id=assignment.class_id, student_id=current_user.id
+            ).first():
+                continue
         total_in_pool = len(exam.questions)
         # Students always get 10 (or the whole pool if it's smaller)
         questions_shown = min(10, total_in_pool)
@@ -205,6 +213,8 @@ def get_exam(
     exam = db.query(models.Exam).filter(models.Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
+
+    require_exam_enrollment(db, current_user, exam_id)
 
     # Block if already submitted
     existing_submission = db.query(models.Submission).filter(
@@ -287,6 +297,8 @@ def submit_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
 
+    require_exam_enrollment(db, current_user, exam_id)
+
     existing = db.query(models.Submission).filter(
         models.Submission.exam_id == exam_id,
         models.Submission.student_id == current_user.id
@@ -301,6 +313,11 @@ def submit_exam(
     ).first()
     if not session:
         raise HTTPException(status_code=400, detail="No active exam session found")
+    if session.status != "in_progress":
+        raise HTTPException(status_code=403, detail="Exam session is no longer active")
+
+    elapsed_seconds = (datetime.now(session.started_at.tzinfo) - session.started_at).total_seconds()
+    accepted_answers = submission.answers if elapsed_seconds <= exam.duration_minutes * 60 else {}
 
     # The set of question IDs this student was legitimately shown
     locked_questions = json.loads(session.question_data)
@@ -310,7 +327,7 @@ def submit_exam(
 
     # Score ONLY questions that belong to this session; ignore any others
     score = 0
-    for question_id, submitted_text in submission.answers.items():
+    for question_id, submitted_text in accepted_answers.items():
         qid = int(question_id)
         if qid not in valid_question_ids:
             continue  # reject answers to questions not in this session
@@ -336,7 +353,7 @@ def submit_exam(
     new_submission = models.Submission(
         exam_id=exam_id,
         student_id=current_user.id,
-        answers=json.dumps(submission.answers),
+        answers=json.dumps(accepted_answers),
         score=score,
         total_questions=total_questions
     )
@@ -369,6 +386,7 @@ def log_violation(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    require_exam_enrollment(db, current_user, exam_id)
     new_violation = models.Violation(
         exam_id=exam_id,
         student_id=current_user.id,
@@ -410,6 +428,8 @@ async def analyze_proctor_frame(
     db: Session = Depends(get_db)
 ):
     exam_id = request.get("exam_id")
+    if exam_id is not None:
+        require_exam_enrollment(db, current_user, exam_id)
     image_data = request.get("image")
 
     if not image_data:
@@ -697,6 +717,7 @@ def delete_exam(
     db.query(models.Violation).filter(models.Violation.exam_id == exam_id).delete()
     db.query(models.Submission).filter(models.Submission.exam_id == exam_id).delete()
     db.query(models.ExamSession).filter(models.ExamSession.exam_id == exam_id).delete()
+    db.query(models.SchoolAssessment).filter(models.SchoolAssessment.exam_id == exam_id).delete()
     db.query(models.Question).filter(models.Question.exam_id == exam_id).delete()
     db.delete(exam)
     db.commit()
@@ -800,6 +821,8 @@ def delete_student(
     email = student.email
 
     # Remove all their data first (foreign-key order), then the account
+    db.query(models.Attendance).filter(models.Attendance.student_id == student_id).delete()
+    db.query(models.Enrollment).filter(models.Enrollment.student_id == student_id).delete()
     db.query(models.Violation).filter(models.Violation.student_id == student_id).delete()
     db.query(models.Submission).filter(models.Submission.student_id == student_id).delete()
     db.query(models.ExamSession).filter(models.ExamSession.student_id == student_id).delete()

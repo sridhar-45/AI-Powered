@@ -17,7 +17,7 @@ function Login() {
     try {
       const data = await apiCall("/auth/login", "POST", { email, password });
       setToken(data.access_token);
-      navigate("/dashboard");
+      navigate(data.user?.role === "admin" ? "/school" : "/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -31,17 +31,17 @@ function Login() {
       <div style={styles.left}>
         <div style={styles.brandRow}>
           <div style={styles.logoBox}>🛡️</div>
-          <span style={styles.brandName}>ProctorAI</span>
+          <span style={styles.brandName}>SchoolDesk</span>
         </div>
 
         <div style={styles.leftContent}>
-          <div style={styles.eyebrow}>SECURE ASSESSMENT PLATFORM</div>
+          <div style={styles.eyebrow}>SCHOOL MANAGEMENT & ASSESSMENTS</div>
           <h1 style={styles.headline}>
-            Assessments you<br />can actually trust
+            One place for your<br />school and assessments
           </h1>
           <p style={styles.subhead}>
-            Real-time AI monitoring, browser lockdown, and full candidate
-            analytics — in one secure console.
+            Manage classes and attendance, deliver secure exams, and review
+            assessment results in one console.
           </p>
 
           <div style={styles.features}>
@@ -80,7 +80,7 @@ function Login() {
         <div style={styles.card}>
           <div style={styles.eyebrowSmall}>SECURE ACCESS</div>
           <h2 style={styles.cardTitle}>Welcome back</h2>
-          <p style={styles.cardSub}>Sign in to your assessment console</p>
+          <p style={styles.cardSub}>Sign in to your school workspace</p>
 
           {error && (
             <div style={styles.error}>

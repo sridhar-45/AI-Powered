@@ -18,6 +18,19 @@ If a candidate switches tabs, exits fullscreen, looks away from the screen, has 
 
 ## Features
 
+### School management (admin)
+- Open `/school` after signing in as an administrator.
+- View student, teacher, class, and daily attendance totals.
+- Create student accounts and maintain a teacher directory.
+- Create classes, assign a teacher, and enroll or remove students.
+- Assign an assessment to a class; enrolled students alone can open assigned exams.
+- Record present, absent, or late attendance for a selected class and date.
+- The original assessment and proctoring pages remain available from the school console.
+
+### Design reference
+
+The React school console takes layout and feature cues from [tanzibhossain/school-management-system](https://github.com/tanzibhossain/school-management-system). This app retains React and FastAPI as its only frontend and backend. The optional `school-management-system/` checkout is kept separately for reference and is not part of this app's runtime.
+
 ### Assessment engine
 - Question bank with randomised selection — each candidate receives a different subset of questions
 - Answer options shuffled per question, with text-based scoring so shuffling can't break grading

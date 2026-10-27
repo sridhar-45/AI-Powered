@@ -8,6 +8,7 @@ import { getToken } from "./utils/api";
 import AdminResults from "./pages/AdminResults";
 import CreateExam from "./pages/CreateExam";
 import ManageStudents from "./pages/ManageStudents";
+import SchoolConsole from "./pages/SchoolConsole";
 
 // This component protects routes - only lets logged-in users through
 function ProtectedRoute({ children }) {
@@ -24,6 +25,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/school" element={<ProtectedRoute><SchoolConsole /></ProtectedRoute>} />
         <Route
           path="/dashboard"
           element={
